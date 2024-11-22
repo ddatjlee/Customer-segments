@@ -1,0 +1,91 @@
+/* styles.css */
+
+/* To center the container and add some padding */
+body {
+    background-color: #f8f9fa;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* Styling the main container */
+.container {
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    width: 80%;
+    max-width: 800px;
+}
+
+/* Title styling */
+h1 {
+    font-size: 2rem;
+    color: #343a40;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* Styling the upload form */
+form {
+    margin-top: 20px;
+}
+
+.form-label {
+    font-weight: bold;
+    color: #495057;
+}
+
+input[type="file"] {
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid #ced4da;
+    width: 100%;
+    display: block;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+/* Styling the results table */
+table {
+    margin-top: 20px;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px;
+    border: 1px solid #dee2e6;
+    text-align: left;
+}
+
+th {
+    background-color: #f1f1f1;
+    font-weight: bold;
+}
+
+td {
+    background-color: #ffffff;
+}
+
+/* Add some spacing between the sections */
+.mt-5 {
+    margin-top: 50px;
+}
