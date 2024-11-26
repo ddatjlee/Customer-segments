@@ -1,0 +1,30 @@
+/* Định dạng bảng */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 14px;
+}
+
+/* Tiêu đề bảng căn giữa */
+th {
+    text-align: center;
+    vertical-align: middle;
+    background-color: #343a40;
+    color: #fff;
+}
+
+/* Nội dung bảng căn phải */
+td {
+    text-align: right;
+}
+
+/* Thêm khoảng cách giữa các hàng */
+tr {
+    height: 50px;
+}
+
+/* Responsive cho bảng */
+.table-responsive {
+    overflow-x: auto;
+}
