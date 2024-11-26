@@ -1,95 +1,101 @@
-import matplotlib.pyplot as plt
+import os
 import io
 import base64
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, session
 import pandas as pd
+import matplotlib.pyplot as plt
 from customer_segmentation_model import CustomerSegmentationModel
 from sklearn.cluster import KMeans
 
+# Khởi tạo Flask app
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'
+
+# Tạo thư mục lưu trữ tạm thời
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/train_and_elbow', methods=['POST'])
-def train_and_elbow():
+
+@app.route('/upload_file', methods=['POST'])
+def upload_file():
     file = request.files['file']
     if file:
-        k = int(request.form.get('k', 4))  # Lấy giá trị k từ form
-        max_k = int(request.form.get('max_k', 10))  # Giá trị max_k từ form
-        data = pd.read_excel(file, sheet_name='Online Retail')
+        # Lưu tệp vào thư mục tạm thời
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        file.save(file_path)
+        session['uploaded_file_path'] = file_path  # Lưu đường dẫn tệp vào session
 
-        # Kiểm tra các cột cần thiết
-        required_columns = ['CustomerID', 'InvoiceNo', 'Quantity', 'UnitPrice', 'InvoiceDate']
-        missing_columns = [col for col in required_columns if col not in data.columns]
-
-        if missing_columns:
-            return f"Lỗi: Dữ liệu thiếu các cột cần thiết: {', '.join(missing_columns)}"
-
-        # Khởi tạo mô hình phân cụm
-        segmentation_model = CustomerSegmentationModel(n_clusters=k)
-        customer_segments = segmentation_model.fit(data)
-
-        # In cấu trúc dữ liệu
-        print("Cấu trúc dữ liệu sau phân cụm:")
-        print(customer_segments.head())
-        print("Tên cột hiện tại:", list(customer_segments.columns))
-
-        # Đổi tên cột
-        if len(customer_segments.columns) == 5:
-             customer_segments.columns = ['Số ID khách hàng', 'Tần suất mua hàng', 'Tổng chi tiêu', 'Độ gần đây (ngày)', 'Cụm']
-        else:
-             return f"Lỗi: Số lượng cột trong DataFrame không khớp với dự kiến. Các cột hiện tại là: {list(customer_segments.columns)}"
-
-        # ===== Biểu đồ phân cụm =====
-        plt.figure(figsize=(10, 6))
-        clusters = customer_segments['Cụm']
-        plt.scatter(customer_segments['Tần suất mua hàng'], customer_segments['Tổng chi tiêu'], c=clusters, cmap='viridis')
-        plt.title('Phân Loại khách hàng')
-        plt.xlabel('Tần suất mua hàng')
-        plt.ylabel('Tổng chi tiêu')
-        plt.colorbar(label='Cụm')
-        plt.tight_layout()
-
-        # Lưu biểu đồ phân cụm
-        img_cluster = io.BytesIO()
-        plt.savefig(img_cluster, format='png')
-        img_cluster.seek(0)
-        plot_url_cluster = base64.b64encode(img_cluster.getvalue()).decode()
-
-        # ===== Biểu đồ Elbow =====
+        # Đọc tệp để xử lý biểu đồ Elbow
+        data = pd.read_excel(file_path, sheet_name='Online Retail')
         distortions = []
+        segmentation_model = CustomerSegmentationModel()
         customer_metrics = segmentation_model.preprocess_data(data)
         features = customer_metrics[['Frequency', 'Monetary', 'Recency']]
         data_scaled = segmentation_model.scaler.fit_transform(features)
 
+        max_k = 10  # Số cụm tối đa
         for k_value in range(1, max_k + 1):
             kmeans = KMeans(n_clusters=k_value, random_state=42)
             kmeans.fit(data_scaled)
             distortions.append(kmeans.inertia_)
 
+        # Vẽ biểu đồ Elbow
         plt.figure(figsize=(10, 6))
         plt.plot(range(1, max_k + 1), distortions, marker='o')
-        plt.title('Phương pháp Elbow')
+        plt.title('Kết quả Elbow')
         plt.xlabel('Số cụm (k)')
         plt.ylabel('Sai số (Inertia)')
         plt.grid(True)
         plt.tight_layout()
 
-        # Lưu biểu đồ Elbow
         img_elbow = io.BytesIO()
         plt.savefig(img_elbow, format='png')
         img_elbow.seek(0)
         plot_url_elbow = base64.b64encode(img_elbow.getvalue()).decode()
 
-        # Kết quả phân cụm (bảng HTML)
-        result_html = customer_segments.to_html(classes='table table-striped', border=0, index=False)
-
-        return render_template('index.html', table=result_html, plot_url_cluster=plot_url_cluster, plot_url_elbow=plot_url_elbow)
+        return render_template('index.html', plot_url_elbow=plot_url_elbow)
 
     return "Vui lòng upload file Excel hợp lệ."
 
+
+@app.route('/train_and_cluster', methods=['POST'])
+def train_and_cluster():
+    k = int(request.form.get('k', 4))
+    file_path = session.get('uploaded_file_path')  # Lấy đường dẫn tệp từ session
+    if file_path and os.path.exists(file_path):
+        # Đọc lại tệp
+        data = pd.read_excel(file_path, sheet_name='Online Retail')
+
+        # Huấn luyện mô hình
+        segmentation_model = CustomerSegmentationModel(n_clusters=k)
+        customer_segments = segmentation_model.fit(data)
+
+        # Vẽ biểu đồ phân cụm
+        plt.figure(figsize=(10, 6))
+        clusters = customer_segments['Cluster']
+        plt.scatter(customer_segments['Frequency'], customer_segments['Monetary'], c=clusters, cmap='viridis')
+        plt.title('Kết quả biểu đồ phân loại khách hàng')
+        plt.xlabel('Tần suất mua hàng')
+        plt.ylabel('Tổng chi tiêu')
+        plt.colorbar(label='Cụm')
+        plt.tight_layout()
+
+        img_cluster = io.BytesIO()
+        plt.savefig(img_cluster, format='png')
+        img_cluster.seek(0)
+        plot_url_cluster = base64.b64encode(img_cluster.getvalue()).decode()
+
+        result_html = customer_segments.to_html(classes='table table-striped table-bordered', index=False)
+
+        return render_template('index.html', table=result_html, plot_url_cluster=plot_url_cluster)
+
+    return "Không tìm thấy tệp đã tải lên. Vui lòng thử lại."
 
 
 if __name__ == '__main__':
